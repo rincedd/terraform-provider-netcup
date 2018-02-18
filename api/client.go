@@ -3,7 +3,6 @@ package api
 import (
 	"bytes"
 	"encoding/xml"
-	"log"
 	"net/http"
 	"text/template"
 )
@@ -18,6 +17,7 @@ type (
 		XMLName xml.Name `xml:"Body"`
 		IPs     []string `xml:"getVServerIPsResponse>return"`
 	}
+
 	VServerIpsResponse struct {
 		XMLName xml.Name `xml:"Envelope"`
 		Body    VServerIpsResponseBody
@@ -32,6 +32,16 @@ type (
 		XMLName xml.Name `xml:"Envelope"`
 		Body    VServerStateResponseBody
 	}
+
+	VServerNicknameResponseBody struct {
+		XMLName  xml.Name `xml:"Body"`
+		Nickname string   `xml:"getVServerNicknameResponse>return"`
+	}
+
+	VServerNicknameResponse struct {
+		XMLName xml.Name `xml:"Envelope"`
+		Body    VServerNicknameResponseBody
+	}
 )
 
 const netcupWSUrl = "https://www.servercontrolpanel.de:443/SCP/WSEndUser"
@@ -42,6 +52,7 @@ const vServerRequestTpl = `<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org
 			 <loginName>{{.LoginName}}</loginName>
 			 <password>{{.Password}}</password>
 			 <vserverName>{{.VServerName}}</vserverName>
+			 <vservername>{{.VServerName}}</vservername>
 		  </end:{{.Operation}}>
 	   </soap:Body>
 	</soap:Envelope>`
@@ -65,12 +76,17 @@ func (self *Client) getVServerRequestBody(operation string, vServerName string) 
 	return &requestBody, nil
 }
 
-func (self *Client) sendRequest(requestBody *bytes.Buffer) (*http.Response, error) {
+func (self *Client) sendRequest(requestBody *bytes.Buffer, responseData interface{}) error {
 	resp, err := http.Post(netcupWSUrl, "text/xml", requestBody)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return resp, nil
+	defer resp.Body.Close()
+	err = xml.NewDecoder(resp.Body).Decode(responseData)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (self *Client) GetVServerIPs(vServerName string) ([]string, error) {
@@ -78,18 +94,9 @@ func (self *Client) GetVServerIPs(vServerName string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("Sending %s", requestBody.String())
-	resp, err := self.sendRequest(requestBody)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 	r := new(VServerIpsResponse)
-	err = xml.NewDecoder(resp.Body).Decode(r)
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("Got %s", r)
+	err = self.sendRequest(requestBody, r)
+
 	return r.Body.IPs, nil
 }
 
@@ -98,17 +105,23 @@ func (self *Client) GetVServerState(vServerName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	log.Printf("Sending %s", requestBody.String())
-	resp, err := self.sendRequest(requestBody)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
 	r := new(VServerStateResponse)
-	err = xml.NewDecoder(resp.Body).Decode(r)
+	err = self.sendRequest(requestBody, r)
 	if err != nil {
 		return "", err
 	}
-	log.Printf("Got %s", r)
 	return r.Body.State, nil
+}
+
+func (self *Client) GetVServerNickname(vServerName string) (string, error) {
+	requestBody, err := self.getVServerRequestBody("getVServerNickname", vServerName)
+	if err != nil {
+		return "", err
+	}
+	r := new(VServerNicknameResponse)
+	err = self.sendRequest(requestBody, r)
+	if err != nil {
+		return "", err
+	}
+	return r.Body.Nickname, nil
 }

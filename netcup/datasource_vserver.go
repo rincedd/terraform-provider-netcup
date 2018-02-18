@@ -30,6 +30,10 @@ func dataSourceVServer() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+			"nickname": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 		},
 	}
 }
@@ -48,6 +52,7 @@ func resourceServerRead(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return err
 	}
+	nickname, err := client.GetVServerNickname(serverName)
 	var ipv4s, ipv6s []string
 	for _, ip := range ips {
 		if strings.ContainsRune(ip, ':') {
@@ -60,6 +65,7 @@ func resourceServerRead(d *schema.ResourceData, m interface{}) error {
 	d.Set("ipv4_addrs", ipv4s)
 	d.Set("ipv6_addrs", ipv6s)
 	d.Set("state", state)
+	d.Set("nickname", nickname)
 
 	return nil
 }
