@@ -13,49 +13,34 @@ type (
 		Password  string
 	}
 
-	VServerIpsResponseBody struct {
+	VServerInfo struct {
+		IPs      []string `xml:"getVServerInformationResponse>return>ips"`
+		Nickname string   `xml:"getVServerInformationResponse>return>vServerNickname"`
+		Status   string   `xml:"getVServerInformationResponse>return>status"`
+	}
+
+	VServerInformationResponseBody struct {
 		XMLName xml.Name `xml:"Body"`
-		IPs     []string `xml:"getVServerIPsResponse>return"`
+		VServerInfo
 	}
 
-	VServerIpsResponse struct {
+	VServerInformationResponse struct {
 		XMLName xml.Name `xml:"Envelope"`
-		Body    VServerIpsResponseBody
-	}
-
-	VServerStateResponseBody struct {
-		XMLName xml.Name `xml:"Body"`
-		State   string   `xml:"getVServerStateResponse>return"`
-	}
-
-	VServerStateResponse struct {
-		XMLName xml.Name `xml:"Envelope"`
-		Body    VServerStateResponseBody
-	}
-
-	VServerNicknameResponseBody struct {
-		XMLName  xml.Name `xml:"Body"`
-		Nickname string   `xml:"getVServerNicknameResponse>return"`
-	}
-
-	VServerNicknameResponse struct {
-		XMLName xml.Name `xml:"Envelope"`
-		Body    VServerNicknameResponseBody
+		Body    VServerInformationResponseBody
 	}
 )
 
 const netcupWSUrl = "https://www.servercontrolpanel.de:443/SCP/WSEndUser"
 const vServerRequestTpl = `<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:end="http://enduser.service.web.vcp.netcup.de/">
-	   <soap:Header/>
-	   <soap:Body>
-		  <end:{{.Operation}}>
-			 <loginName>{{.LoginName}}</loginName>
-			 <password>{{.Password}}</password>
-			 <vserverName>{{.VServerName}}</vserverName>
-			 <vservername>{{.VServerName}}</vservername>
-		  </end:{{.Operation}}>
-	   </soap:Body>
-	</soap:Envelope>`
+    <soap:Header/>
+    <soap:Body>
+      <end:{{.Operation}}>
+        <loginName>{{.LoginName}}</loginName>
+        <password>{{.Password}}</password>
+        <vservername>{{.VServerName}}</vservername>
+      </end:{{.Operation}}>
+    </soap:Body>
+  </soap:Envelope>`
 
 func (self *Client) getVServerRequestBody(operation string, vServerName string) (*bytes.Buffer, error) {
 	tpl, err := template.New("vServerRequest").Parse(vServerRequestTpl)
@@ -89,39 +74,15 @@ func (self *Client) sendRequest(requestBody *bytes.Buffer, responseData interfac
 	return nil
 }
 
-func (self *Client) GetVServerIPs(vServerName string) ([]string, error) {
-	requestBody, err := self.getVServerRequestBody("getVServerIPs", vServerName)
+func (self *Client) GetVServerInformation(vServerName string) (*VServerInfo, error) {
+	requestBody, err := self.getVServerRequestBody("getVServerInformation", vServerName)
 	if err != nil {
 		return nil, err
 	}
-	r := new(VServerIpsResponse)
-	err = self.sendRequest(requestBody, r)
-
-	return r.Body.IPs, nil
-}
-
-func (self *Client) GetVServerState(vServerName string) (string, error) {
-	requestBody, err := self.getVServerRequestBody("getVServerState", vServerName)
-	if err != nil {
-		return "", err
-	}
-	r := new(VServerStateResponse)
+	r := new(VServerInformationResponse)
 	err = self.sendRequest(requestBody, r)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return r.Body.State, nil
-}
-
-func (self *Client) GetVServerNickname(vServerName string) (string, error) {
-	requestBody, err := self.getVServerRequestBody("getVServerNickname", vServerName)
-	if err != nil {
-		return "", err
-	}
-	r := new(VServerNicknameResponse)
-	err = self.sendRequest(requestBody, r)
-	if err != nil {
-		return "", err
-	}
-	return r.Body.Nickname, nil
+	return &r.Body.VServerInfo, nil
 }

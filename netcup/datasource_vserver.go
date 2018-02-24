@@ -44,17 +44,12 @@ func resourceServerRead(d *schema.ResourceData, m interface{}) error {
 	serverName := d.Get("server_name").(string)
 
 	client := api.Client{loginName, password}
-	ips, err := client.GetVServerIPs(serverName)
+	serverInfo, err := client.GetVServerInformation(serverName)
 	if err != nil {
 		return err
 	}
-	state, err := client.GetVServerState(serverName)
-	if err != nil {
-		return err
-	}
-	nickname, err := client.GetVServerNickname(serverName)
 	var ipv4s, ipv6s []string
-	for _, ip := range ips {
+	for _, ip := range serverInfo.IPs {
 		if strings.ContainsRune(ip, ':') {
 			ipv6s = append(ipv6s, ip)
 		} else {
@@ -64,8 +59,8 @@ func resourceServerRead(d *schema.ResourceData, m interface{}) error {
 	d.SetId(serverName)
 	d.Set("ipv4_addrs", ipv4s)
 	d.Set("ipv6_addrs", ipv6s)
-	d.Set("state", state)
-	d.Set("nickname", nickname)
+	d.Set("state", serverInfo.Status)
+	d.Set("nickname", serverInfo.Nickname)
 
 	return nil
 }
