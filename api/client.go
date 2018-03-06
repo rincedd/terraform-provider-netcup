@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/xml"
+	"fmt"
 	"net/http"
 	"text/template"
 )
@@ -11,6 +12,11 @@ type (
 	Client struct {
 		LoginName string
 		Password  string
+	}
+
+	FaultInfo struct {
+		FaultCode   string `xml:"Fault>faultcode"`
+		FaultString string `xml:"Fault>faultstring"`
 	}
 
 	VServerInfo struct {
@@ -22,6 +28,7 @@ type (
 	VServerInformationResponseBody struct {
 		XMLName xml.Name `xml:"Body"`
 		VServerInfo
+		FaultInfo
 	}
 
 	VServerInformationResponse struct {
@@ -84,5 +91,10 @@ func (self *Client) GetVServerInformation(vServerName string) (*VServerInfo, err
 	if err != nil {
 		return nil, err
 	}
+
+	if len(r.Body.FaultCode) > 0 {
+		return nil, fmt.Errorf("SOAP error: %s [%s]", r.Body.FaultString, r.Body.FaultCode)
+	}
+
 	return &r.Body.VServerInfo, nil
 }
