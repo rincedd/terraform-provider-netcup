@@ -1,7 +1,7 @@
 package netcup
 
 import (
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/rincedd/terraform-provider-netcup/api"
 	"strings"
 )
@@ -43,7 +43,7 @@ func resourceServerRead(d *schema.ResourceData, m interface{}) error {
 	password := m.(ProviderConfig).Password
 	serverName := d.Get("server_name").(string)
 
-	client := api.Client{loginName, password}
+	client := api.Client{LoginName: loginName, Password: password}
 	serverInfo, err := client.GetVServerInformation(serverName)
 	if err != nil {
 		return err

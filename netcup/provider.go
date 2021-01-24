@@ -1,7 +1,9 @@
 package netcup
 
 import (
-	"github.com/hashicorp/terraform/helper/schema"
+	"context"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func Provider() *schema.Provider {
@@ -23,7 +25,7 @@ func Provider() *schema.Provider {
 		DataSourcesMap: map[string]*schema.Resource{
 			"netcup_vserver": dataSourceVServer(),
 		},
-		ConfigureFunc: configureProvider,
+		ConfigureContextFunc: configureProvider,
 	}
 }
 
@@ -32,7 +34,7 @@ type ProviderConfig struct {
 	Password  string
 }
 
-func configureProvider(d *schema.ResourceData) (interface{}, error) {
+func configureProvider(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	return ProviderConfig{
 		LoginName: d.Get("login_name").(string),
 		Password:  d.Get("password").(string),
